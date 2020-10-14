@@ -1,4 +1,5 @@
-﻿namespace UnityEngine.InputLegacy.OldInputCompatibility
+﻿/*
+namespace UnityEngine.InputLegacy.OldInputCompatibility
 {
     internal class ActionNameMapper
     {
@@ -22,3 +23,4 @@
         }
     }
 }
+*/
