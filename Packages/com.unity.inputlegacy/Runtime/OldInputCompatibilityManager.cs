@@ -235,17 +235,15 @@ namespace UnityEngine.InputLegacy.OldInputCompatibility
             //     }
             // }
 
-            var provider = new ApiShimDataProvider(
+            DeviceMonitor.Enable(ApiShimDataProvider.OnTextChange);
+            InputSystem.EnhancedTouch.EnhancedTouchSupport.Enable();
+            Input.provider = new ApiShimDataProvider(
 /*
                 s_Actions,
                 s_ActionStateListeners,
                 s_KeyActions
 */
             );
-
-            DeviceMonitor.Enable(provider.OnTextChange);
-
-            Input.provider = provider;
         }
 
         /*

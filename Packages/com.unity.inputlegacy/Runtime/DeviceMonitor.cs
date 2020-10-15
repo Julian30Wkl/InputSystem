@@ -11,6 +11,11 @@ namespace UnityEngine.InputLegacy.OldInputCompatibility
         private static InputDevice[] m_Joysticks;
         private static Action<char> m_KeyboardOnText;
 
+        public static InputDevice[] Joysticks
+        {
+            get => m_Joysticks;
+        }
+
         public static string JoyNumToUsage(int joyNum)
         {
             return $"LegacyJoystick{joyNum}";
@@ -73,6 +78,10 @@ namespace UnityEngine.InputLegacy.OldInputCompatibility
                     else if (change == InputDeviceChange.Added)
                         OnDeviceRemoved(device);
                 };
+        }
+
+        public static void Disable()
+        {
         }
     };
 }

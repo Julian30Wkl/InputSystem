@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace UnityEngine.InputLegacy.OldInputCompatibility
 {
@@ -19,10 +20,23 @@ namespace UnityEngine.InputLegacy.OldInputCompatibility
 
         public static string KeyCodeToKeyName(KeyCode keyCode)
         {
-            return s_KeyCodeToKeyName[(int)keyCode];
+            return s_KeyCodeToKeyName[(int) keyCode];
         }
 
-        public static Key KeyCodeToKeyboardKey(KeyCode keyCode)
+        private const int k_MaxButtonsPerJoystick = 20;
+
+        public static (int joyNum, KeyCode joystick0KeyCode) KeyCodeToJoystickNumberAndJoystick0KeyCode(KeyCode keyCode)
+        {
+            if (keyCode < KeyCode.JoystickButton0 || keyCode > KeyCode.Joystick8Button19)
+                return (-1, KeyCode.None);
+
+            var joyNum = (keyCode - KeyCode.JoystickButton0) / k_MaxButtonsPerJoystick;
+            var mappedKeyCode = keyCode - joyNum * k_MaxButtonsPerJoystick;
+
+            return (joyNum, mappedKeyCode);
+        }
+
+        public static Key? KeyCodeToKeyboardKey(KeyCode keyCode)
         {
             switch (keyCode)
             {
@@ -137,7 +151,45 @@ namespace UnityEngine.InputLegacy.OldInputCompatibility
                 // case KeyCode.OEM3: return Key.OEM3;
                 // case KeyCode.OEM4: return Key.OEM4;
                 // case KeyCode.OEM5: return Key.OEM5;
-                default: return Key.None;
+                default: return null;
+            }
+        }
+
+        public static MouseButton? KeyCodeToMouseButton(KeyCode keyCode)
+        {
+            switch (keyCode)
+            {
+                case KeyCode.Mouse0: return MouseButton.Left;
+                case KeyCode.Mouse1: return MouseButton.Right;
+                case KeyCode.Mouse2: return MouseButton.Middle;
+                ////REVIEW: With these two, is it this way around or the other?
+                case KeyCode.Mouse3: return MouseButton.Forward;
+                case KeyCode.Mouse4: return MouseButton.Back;
+                // TODO KeyCode.Mouse5 / KeyCode.Mouse6
+                default: return null;
+            }
+        }
+
+        public static GamepadButton? Joystick0KeyCodeToGamepadButton(KeyCode keyCode)
+        {
+            switch (keyCode)
+            {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+                // https://answers.unity.com/questions/1350081/xbox-one-controller-mapping-solved.html
+                case KeyCode.JoystickButton0: return GamepadButton.South;
+                case KeyCode.JoystickButton1: return GamepadButton.East;
+                case KeyCode.JoystickButton2: return GamepadButton.West;
+                case KeyCode.JoystickButton3: return GamepadButton.North;
+                case KeyCode.JoystickButton4: return GamepadButton.LeftShoulder;
+                case KeyCode.JoystickButton5: return GamepadButton.RightShoulder;
+                case KeyCode.JoystickButton6: return GamepadButton.Select;
+                case KeyCode.JoystickButton7: return GamepadButton.Start;
+                case KeyCode.JoystickButton8: return GamepadButton.LeftStick;
+                case KeyCode.JoystickButton9: return GamepadButton.RightStick;
+#else
+                // TODO macOS bindings
+#endif
+                default: return null;
             }
         }
 

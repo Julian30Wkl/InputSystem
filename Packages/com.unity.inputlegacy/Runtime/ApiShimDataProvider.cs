@@ -2,22 +2,24 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
 using UnityEngine.InputSystem.EnhancedTouch;
 using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.iOS;
 
 namespace UnityEngine.InputLegacy.OldInputCompatibility
 {
     internal class ApiShimDataProvider : Input.DataProvider
     {
-        public void OnTextChange(char x)
+        public static void OnTextChange(char x)
         {
-            if (inputStringStep != InputUpdate.s_UpdateStepCount)
+            if (s_InputStringStep != InputUpdate.s_UpdateStepCount)
             {
-                inputStringData = x.ToString();
-                inputStringStep = InputUpdate.s_UpdateStepCount;
+                s_InputStringData = x.ToString();
+                s_InputStringStep = InputUpdate.s_UpdateStepCount;
             }
             else
-                inputStringData += x.ToString();
+                s_InputStringData += x.ToString();
         }
 
         public ApiShimDataProvider(
@@ -28,7 +30,6 @@ namespace UnityEngine.InputLegacy.OldInputCompatibility
             */
         )
         {
-            InputSystem.EnhancedTouch.EnhancedTouchSupport.Enable();
             // map = setMap;
             // stateListeners = setStateListeners;
             // keyActions = setKeyActions;
@@ -38,8 +39,8 @@ namespace UnityEngine.InputLegacy.OldInputCompatibility
         //private IDictionary<string, ActionStateListener> stateListeners; // TODO remove this later on
         //private ActionStateListener[] keyActions; // array of keycodes
 
-        private string inputStringData = "";
-        private uint inputStringStep = 0;
+        private static string s_InputStringData = "";
+        private static uint s_InputStringStep = 0;
 
         private static bool ResolveState(InputSystem.Controls.ButtonControl control, Request request)
         {
@@ -95,6 +96,21 @@ namespace UnityEngine.InputLegacy.OldInputCompatibility
             return false;
         }
 
+        private static ButtonControl GetMouseButtonControlForMouseButton(Mouse mouse, MouseButton mouseButton)
+        {
+            if (mouse == null)
+                return null;
+            switch (mouseButton)
+            {
+                case MouseButton.Left: return mouse.leftButton;
+                case MouseButton.Right: return mouse.rightButton;
+                case MouseButton.Middle: return mouse.middleButton;
+                case MouseButton.Forward: return mouse.forwardButton;
+                case MouseButton.Back: return mouse.backButton;
+                default: return null;
+            }
+        }
+
         public override bool GetKey(KeyCode keyCode, Request request)
         {
             switch (keyCode)
@@ -102,28 +118,26 @@ namespace UnityEngine.InputLegacy.OldInputCompatibility
                 case var keyboardKeyCode when (keyCode >= KeyCode.None && keyCode <= KeyCode.Menu):
                 {
                     var key = KeyCodeMapping.KeyCodeToKeyboardKey(keyboardKeyCode);
-                    return key != Key.None && ResolveState(Keyboard.current?[key], request);
+                    return key.HasValue && ResolveState(Keyboard.current?[key.Value], request);
                 }
 
                 case var mouseKeyCode when (keyCode >= KeyCode.Mouse0 && keyCode <= KeyCode.Mouse6):
                 {
-                    switch (mouseKeyCode)
-                    {
-                        case KeyCode.Mouse0: return ResolveState(Mouse.current?.leftButton, request);
-                        case KeyCode.Mouse1: return ResolveState(Mouse.current?.rightButton, request);
-                        case KeyCode.Mouse2: return ResolveState(Mouse.current?.middleButton, request);
-                        ////REVIEW: With these two, is it this way around or the other?
-                        case KeyCode.Mouse3: return ResolveState(Mouse.current?.forwardButton, request);
-                        case KeyCode.Mouse4: return ResolveState(Mouse.current?.backButton, request);
-                        // TODO KeyCode.Mouse5 / KeyCode.Mouse6
-                        default:
-                            return false;
-                    }
-                    return false;
+                    var mouseButton = KeyCodeMapping.KeyCodeToMouseButton(mouseKeyCode);
+                    return mouseButton.HasValue && ResolveState(GetMouseButtonControlForMouseButton(Mouse.current, mouseButton.Value), request);
                 }
 
                 case var joystickKeyCode when (keyCode >= KeyCode.JoystickButton0 && keyCode <= KeyCode.Joystick8Button19):
                 {
+                    var (joyNum, joystick0KeyCode) = KeyCodeMapping.KeyCodeToJoystickNumberAndJoystick0KeyCode(joystickKeyCode);
+                    var gamepadButton = KeyCodeMapping.Joystick0KeyCodeToGamepadButton(joystick0KeyCode);
+
+                    if (joyNum >= 0 && joyNum < DeviceMonitor.Joysticks.Length && gamepadButton.HasValue)
+                    {
+                        var gamepad = (Gamepad) DeviceMonitor.Joysticks[joyNum];
+                        return gamepad != null && ResolveState(gamepad[gamepadButton.Value], request);
+                    }
+
                     // TODO
                     return false;
                 }
@@ -145,8 +159,8 @@ namespace UnityEngine.InputLegacy.OldInputCompatibility
 
         public override string GetInputString()
         {
-            if (inputStringStep == InputUpdate.s_UpdateStepCount)
-                return inputStringData;
+            if (s_InputStringStep == InputUpdate.s_UpdateStepCount)
+                return s_InputStringData;
             return "";
         }
 
